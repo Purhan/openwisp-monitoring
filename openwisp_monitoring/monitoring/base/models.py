@@ -213,13 +213,18 @@ class AbstractMetric(TimeStampedEditableModel):
             database=database,
             retention_policy=retention_policy,
         )
-        timeseries_write.delay(name=self.key, values=values, **options)
-        post_metric_write.send(**signal_kwargs)
         # check can be disabled,
         # mostly for automated testing and debugging purposes
-        if not check:
-            return
-        self.check_threshold(value, time, retention_policy, send_alert)
+        if check:
+            options['threshold_dict'] = {
+                'value': value,
+                'time': time,
+                'retention_policy': retention_policy,
+                'send_alert': send_alert,
+            }
+            options['metric_pk'] = self.pk
+        timeseries_write.delay(name=self.key, values=values, **options)
+        post_metric_write.send(**signal_kwargs)
 
     def read(self, **kwargs):
         """ reads timeseries data """
